@@ -30,6 +30,20 @@ class OLED_1inch3(framebuf.FrameBuffer):
         self.white =   0xffff
         self.balck =   0x0000
         
+        self.flipped = False
+
+    def applyFlipToByte(self, b):
+        if not self.flipped:
+            return(b)
+        else:
+            b = (b & 0xF0) >> 4 | (b & 0x0F) << 4
+            b = (b & 0xCC) >> 2 | (b & 0x33) << 2
+            b = (b & 0xAA) >> 1 | (b & 0x55) << 1
+            return(b)
+    
+    def flip(self):
+        self.flipped = not self.flipped
+        
     def write_cmd(self, cmd):
         self.cs(1)
         self.dc(0)
@@ -90,12 +104,16 @@ class OLED_1inch3(framebuf.FrameBuffer):
         self.write_cmd(0XAF)
     def show(self):
         self.write_cmd(0xb0)
+        if self.flipped:
+            revBuf=bytearray(list(reversed(self.buffer)))
+            fbuf=framebuf.FrameBuffer(revBuf,128,64,framebuf.MONO_HMSB)
+            self.blit(fbuf,0,0)
         for page in range(0,64):
             self.column = 63 - page              
             self.write_cmd(0x00 + (self.column & 0x0f))
             self.write_cmd(0x10 + (self.column >> 4))
             for num in range(0,16):
-                self.write_data(self.buffer[page*16+num])
+                self.write_data(self.applyFlipToByte(self.buffer[page*16+num]))
         
           
 if __name__=='__main__':
@@ -207,6 +225,7 @@ if __name__=='__main__':
     
     time.sleep(1)
     OLED.fill(0xFFFF)
+
 
 
 
